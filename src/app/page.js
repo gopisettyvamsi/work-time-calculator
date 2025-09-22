@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
-  Clock, 
-  Timer, 
-  CheckCircle, 
-  BarChart3, 
-  Coffee, 
-  Hourglass, 
-  LogOut, 
+import {
+  Clock,
+  Timer,
+  CheckCircle,
+  BarChart3,
+  Coffee,
+  Hourglass,
+  LogOut,
   TrendingUp,
   AlertCircle,
   Loader2,
@@ -90,27 +90,27 @@ export default function SimpleWorkCalculator() {
     setCalculating(false);
   };
 
-const Logo = () => (
-  <div className="flex items-center justify-center space-x-3 mb-8">
-    {/* Logo image */}
-    <div className="relative p-2 rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-500/20 to-cyan-500/20">
-      <img
-        src="/1679347395065-removebg-preview.png" // place the logo inside /public
-        alt="Edvenswa Logo"
-        className="h-10 w-auto"
-      />
-      <div className="absolute inset-0 bg-blue-400 opacity-20 blur-xl rounded-2xl animate-pulse"></div>
-    </div>
+  const Logo = () => (
+    <div className="flex items-center justify-center space-x-3 mb-8">
+      {/* Logo image */}
+      <div className="relative p-2 rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-500/20 to-cyan-500/20">
+        <img
+          src="/1679347395065-removebg-preview.png" // place the logo inside /public
+          alt="Edvenswa Logo"
+          className="h-10 w-auto"
+        />
+        <div className="absolute inset-0 bg-blue-400 opacity-20 blur-xl rounded-2xl animate-pulse"></div>
+      </div>
 
-    {/* Text */}
-    <div>
-      <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 tracking-wide">
-        Edvenswa
-      </h1>
-      <p className="text-xs text-gray-400 tracking-wider uppercase">Work Calculator</p>
+      {/* Text */}
+      <div>
+        <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 tracking-wide">
+          Edvenswa
+        </h1>
+        <p className="text-xs text-gray-400 tracking-wider uppercase">Work Calculator</p>
+      </div>
     </div>
-  </div>
-);
+  );
 
   return (
     <>
@@ -139,7 +139,7 @@ const Logo = () => (
       `}</style>
 
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
-        
+
         {/* Background Elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-blue-500/5 rounded-full blur-3xl animate-pulse"></div>
@@ -148,33 +148,46 @@ const Logo = () => (
         </div>
 
         <div className={`relative w-full max-w-lg transition-all duration-1000 ease-out ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-          
+
           {/* Main Card */}
           <div className="bg-gray-900/40 backdrop-blur-2xl border border-gray-700/50 rounded-3xl p-8 shadow-2xl glow">
-            
+
             <Logo />
 
             {/* Live Clock */}
-            <div className="text-center mb-8 p-6 bg-gradient-to-r from-gray-800/30 to-gray-700/30 rounded-2xl border border-gray-600/30 float">
-              <div className="flex items-center justify-center space-x-2 mb-3">
-                <Clock className="w-5 h-5 text-blue-400" />
-                <span className="text-sm text-gray-400 uppercase tracking-wide">Current Time</span>
+
+            <div className="text-center mb-6 p-4 sm:p-6 bg-gradient-to-r from-gray-800/30 to-gray-700/30 rounded-2xl border border-gray-600/30 w-full max-w-sm mx-auto">
+              {/* Header Row */}
+              <div className="flex items-center justify-center space-x-2 mb-2 sm:mb-3">
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
+                <span className="text-xs sm:text-sm text-gray-400 uppercase tracking-wide">
+                  Current Time
+                </span>
               </div>
-              <div className="text-4xl font-mono font-bold text-white mb-2 tracking-wider">
+
+              {/* Time */}
+              <div className="text-2xl sm:text-4xl font-mono font-bold text-white mb-1 sm:mb-2 tracking-wider">
                 {currentTime.toLocaleTimeString("en-US", {
-                  hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true,
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                  hour12: true,
                 })}
               </div>
-              <div className="text-sm text-gray-300">
+
+              {/* Date */}
+              <div className="text-xs sm:text-sm text-gray-300">
                 {currentTime.toLocaleDateString("en-US", {
-                  weekday: "long", month: "short", day: "numeric"
+                  weekday: "long",
+                  month: "short",
+                  day: "numeric",
                 })}
               </div>
             </div>
 
             {/* Form Fields */}
             <div className="space-y-6">
-              
+
               {/* Login Time */}
               <div className="group">
                 <label className="flex items-center space-x-3 text-gray-300 mb-3 group-hover:text-white transition-colors duration-200">
@@ -197,23 +210,23 @@ const Logo = () => (
                 </label>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="relative">
-                    <input 
-                      type="number" 
-                      min="0" 
-                      value={twH} 
+                    <input
+                      type="number"
+                      min="0"
+                      value={twH}
                       onChange={(e) => setTwH(e.target.value)}
-                      className="w-full bg-gray-800/30 border border-gray-600/50 rounded-2xl px-4 py-4 text-white text-center font-mono text-lg focus:outline-none focus:border-green-400 focus:bg-gray-800/50 transition-all duration-300 hover:bg-gray-800/40 hover:border-gray-500/70" 
+                      className="w-full bg-gray-800/30 border border-gray-600/50 rounded-2xl px-4 py-4 text-white text-center font-mono text-lg focus:outline-none focus:border-green-400 focus:bg-gray-800/50 transition-all duration-300 hover:bg-gray-800/40 hover:border-gray-500/70"
                     />
                     <span className="absolute right-3 top-4 text-gray-400 text-sm">hrs</span>
                   </div>
                   <div className="relative">
-                    <input 
-                      type="number" 
-                      min="0" 
-                      max="59" 
-                      value={twM} 
+                    <input
+                      type="number"
+                      min="0"
+                      max="59"
+                      value={twM}
                       onChange={(e) => setTwM(e.target.value)}
-                      className="w-full bg-gray-800/30 border border-gray-600/50 rounded-2xl px-4 py-4 text-white text-center font-mono text-lg focus:outline-none focus:border-green-400 focus:bg-gray-800/50 transition-all duration-300 hover:bg-gray-800/40 hover:border-gray-500/70" 
+                      className="w-full bg-gray-800/30 border border-gray-600/50 rounded-2xl px-4 py-4 text-white text-center font-mono text-lg focus:outline-none focus:border-green-400 focus:bg-gray-800/50 transition-all duration-300 hover:bg-gray-800/40 hover:border-gray-500/70"
                     />
                     <span className="absolute right-3 top-4 text-gray-400 text-sm">min</span>
                   </div>
@@ -228,23 +241,23 @@ const Logo = () => (
                 </label>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="relative">
-                    <input 
-                      type="number" 
-                      min="0" 
-                      value={effH} 
+                    <input
+                      type="number"
+                      min="0"
+                      value={effH}
                       onChange={(e) => setEffH(e.target.value)}
-                      className="w-full bg-gray-800/30 border border-gray-600/50 rounded-2xl px-4 py-4 text-white text-center font-mono text-lg focus:outline-none focus:border-yellow-400 focus:bg-gray-800/50 transition-all duration-300 hover:bg-gray-800/40 hover:border-gray-500/70" 
+                      className="w-full bg-gray-800/30 border border-gray-600/50 rounded-2xl px-4 py-4 text-white text-center font-mono text-lg focus:outline-none focus:border-yellow-400 focus:bg-gray-800/50 transition-all duration-300 hover:bg-gray-800/40 hover:border-gray-500/70"
                     />
                     <span className="absolute right-3 top-4 text-gray-400 text-sm">hrs</span>
                   </div>
                   <div className="relative">
-                    <input 
-                      type="number" 
-                      min="0" 
-                      max="59" 
-                      value={effM} 
+                    <input
+                      type="number"
+                      min="0"
+                      max="59"
+                      value={effM}
                       onChange={(e) => setEffM(e.target.value)}
-                      className="w-full bg-gray-800/30 border border-gray-600/50 rounded-2xl px-4 py-4 text-white text-center font-mono text-lg focus:outline-none focus:border-yellow-400 focus:bg-gray-800/50 transition-all duration-300 hover:bg-gray-800/40 hover:border-gray-500/70" 
+                      className="w-full bg-gray-800/30 border border-gray-600/50 rounded-2xl px-4 py-4 text-white text-center font-mono text-lg focus:outline-none focus:border-yellow-400 focus:bg-gray-800/50 transition-all duration-300 hover:bg-gray-800/40 hover:border-gray-500/70"
                     />
                     <span className="absolute right-3 top-4 text-gray-400 text-sm">min</span>
                   </div>
@@ -259,23 +272,23 @@ const Logo = () => (
                 </label>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="relative">
-                    <input 
-                      type="number" 
-                      min="0" 
-                      value={grossH} 
+                    <input
+                      type="number"
+                      min="0"
+                      value={grossH}
                       onChange={(e) => setGrossH(e.target.value)}
-                      className="w-full bg-gray-800/30 border border-gray-600/50 rounded-2xl px-4 py-4 text-white text-center font-mono text-lg focus:outline-none focus:border-purple-400 focus:bg-gray-800/50 transition-all duration-300 hover:bg-gray-800/40 hover:border-gray-500/70" 
+                      className="w-full bg-gray-800/30 border border-gray-600/50 rounded-2xl px-4 py-4 text-white text-center font-mono text-lg focus:outline-none focus:border-purple-400 focus:bg-gray-800/50 transition-all duration-300 hover:bg-gray-800/40 hover:border-gray-500/70"
                     />
                     <span className="absolute right-3 top-4 text-gray-400 text-sm">hrs</span>
                   </div>
                   <div className="relative">
-                    <input 
-                      type="number" 
-                      min="0" 
-                      max="59" 
-                      value={grossM} 
+                    <input
+                      type="number"
+                      min="0"
+                      max="59"
+                      value={grossM}
                       onChange={(e) => setGrossM(e.target.value)}
-                      className="w-full bg-gray-800/30 border border-gray-600/50 rounded-2xl px-4 py-4 text-white text-center font-mono text-lg focus:outline-none focus:border-purple-400 focus:bg-gray-800/50 transition-all duration-300 hover:bg-gray-800/40 hover:border-gray-500/70" 
+                      className="w-full bg-gray-800/30 border border-gray-600/50 rounded-2xl px-4 py-4 text-white text-center font-mono text-lg focus:outline-none focus:border-purple-400 focus:bg-gray-800/50 transition-all duration-300 hover:bg-gray-800/40 hover:border-gray-500/70"
                     />
                     <span className="absolute right-3 top-4 text-gray-400 text-sm">min</span>
                   </div>
@@ -318,7 +331,7 @@ const Logo = () => (
                   <TrendingUp className="w-5 h-5 text-green-400" />
                   <h3 className="text-xl font-bold text-white">Work Summary</h3>
                 </div>
-                
+
                 <div className="grid grid-cols-1 gap-4">
                   <div className="flex justify-between items-center p-4 bg-gray-800/20 rounded-xl border border-gray-700/30">
                     <div className="flex items-center space-x-3">
@@ -329,7 +342,7 @@ const Logo = () => (
                     </div>
                     <span className="text-xl font-mono font-bold text-yellow-400">{breakTime}</span>
                   </div>
-                  
+
                   <div className="flex justify-between items-center p-4 bg-gray-800/20 rounded-xl border border-gray-700/30">
                     <div className="flex items-center space-x-3">
                       <div className="p-2 bg-orange-500/20 rounded-lg">
@@ -339,7 +352,7 @@ const Logo = () => (
                     </div>
                     <span className="text-xl font-mono font-bold text-orange-400">{remainingTime}</span>
                   </div>
-                  
+
                   <div className="flex justify-between items-center p-4 bg-green-500/10 rounded-xl border-2 border-green-500/30">
                     <div className="flex items-center space-x-3">
                       <div className="p-2 bg-green-500/20 rounded-lg">
