@@ -1,458 +1,360 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import {
-  Clock,
-  Plus,
-  Trash2,
-  Calculator,
+import { useState, useEffect } from "react";
+import { 
+  Clock, 
+  Timer, 
+  CheckCircle, 
+  BarChart3, 
+  Coffee, 
+  Hourglass, 
+  LogOut, 
+  TrendingUp,
   AlertCircle,
-  CheckCircle,
-  Timer,
-  Calendar,
-  Coffee,
+  Loader2,
+  Mountain
 } from "lucide-react";
 
-export default function AdvancedLogoutCalculator() {
+export default function SimpleWorkCalculator() {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [loginTime, setLoginTime] = useState("");
-  const [breaks, setBreaks] = useState([{ id: 1, start: "", end: "", isValid: true, duration: 0 }]);
-  const [logoutTime, setLogoutTime] = useState("");
-  const [totalWorkingHours, setTotalWorkingHours] = useState(8);
-  const [errors, setErrors] = useState({});
-  const [isCalculating, setIsCalculating] = useState(false);
-  const [showResult, setShowResult] = useState(false);
-  const [totalBreakTime, setTotalBreakTime] = useState(0);
-  const [remainingWork, setRemainingWork] = useState("");
-  const [progress, setProgress] = useState(0);
-  const [notifications, setNotifications] = useState([]);
-  const breakIdCounter = useRef(2);
+  const [mounted, setMounted] = useState(false);
 
-  // Real-time clock
+  // time-of-day (clock)
+  const [loginTime, setLoginTime] = useState("");
+
+  // durations (HH/MM)
+  const [twH, setTwH] = useState(8);  // Total Work default 8h
+  const [twM, setTwM] = useState(1);  // Total Work default 1m
+  const [grossH, setGrossH] = useState(0);
+  const [grossM, setGrossM] = useState(0);
+  const [effH, setEffH] = useState(0);
+  const [effM, setEffM] = useState(0);
+
+  // results
+  const [breakTime, setBreakTime] = useState("");
+  const [remainingTime, setRemainingTime] = useState("");
+  const [logoutTime, setLogoutTime] = useState("");
+  const [error, setError] = useState("");
+  const [calculating, setCalculating] = useState(false);
+
+  // live clock & mount animation
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    setTimeout(() => setMounted(true), 100);
     return () => clearInterval(timer);
   }, []);
 
-  // Trigger calculation when inputs change
-  useEffect(() => {
-    if (loginTime && breaks.some((b) => b.start && b.end)) {
-      const timer = setTimeout(() => {
-        calculateLogout();
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [loginTime, breaks, totalWorkingHours]);
+  const toMinutes = (h, m) => (Math.max(0, parseInt(h || 0)) * 60) + Math.max(0, Math.min(59, parseInt(m || 0)));
+  const fmt = (mins) => `${Math.floor(mins / 60)}h ${mins % 60}m`;
 
-  const formatTime = (date) =>
-    date.toLocaleTimeString("en-US", {
-      hour12: true,
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-
-  const formatDate = (date) =>
-    date.toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-
-  const addNotification = (message, type = "info") => {
-    const id = Date.now();
-    setNotifications((prev) => [...prev, { id, message, type }]);
-
-    setTimeout(() => {
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
-    }, 4000);
-  };
-
-  const validateTime = (start, end) => {
-    if (!start || !end) return true;
-    return new Date(`2000-01-01T${start}:00`) < new Date(`2000-01-01T${end}:00`);
-  };
-
-  const validateBreakOverlap = (breaks, currentIndex) => {
-    const current = breaks[currentIndex];
-    if (!current.start || !current.end) return true;
-
-    const currentStart = new Date(`2000-01-01T${current.start}:00`);
-    const currentEnd = new Date(`2000-01-01T${current.end}:00`);
-
-    return !breaks.some((other, i) => {
-      if (i === currentIndex || !other.start || !other.end) return false;
-      const otherStart = new Date(`2000-01-01T${other.start}:00`);
-      const otherEnd = new Date(`2000-01-01T${other.end}:00`);
-      return currentStart < otherEnd && currentEnd > otherStart;
-    });
-  };
-
-  const calculateBreakDuration = (start, end) => {
-    if (!start || !end) return 0;
-    const startTime = new Date(`2000-01-01T${start}:00`);
-    const endTime = new Date(`2000-01-01T${end}:00`);
-    return Math.max(0, (endTime - startTime) / (1000 * 60));
-  };
-
-  const handleAddBreak = () => {
-    setBreaks([
-      ...breaks,
-      { id: breakIdCounter.current++, start: "", end: "", isValid: true, duration: 0 },
-    ]);
-    addNotification("New break added", "success");
-  };
-
-  const handleRemoveBreak = (id) => {
-    if (breaks.length > 1) {
-      setBreaks(breaks.filter((b) => b.id !== id));
-      addNotification("Break removed", "info");
-    }
-  };
-
-  const calculateLogout = useCallback(() => {
-    const newErrors = {};
-    if (!loginTime) {
-      newErrors.loginTime = "Login time is required";
-      setErrors(newErrors);
-      return;
-    }
-
-    setIsCalculating(true);
-
-    let totalBreakMinutes = 0;
-    const updatedBreaks = breaks.map((breakItem, index) => {
-      const duration = calculateBreakDuration(breakItem.start, breakItem.end);
-      let isValid = true;
-
-      if (breakItem.start && breakItem.end) {
-        if (!validateTime(breakItem.start, breakItem.end)) {
-          newErrors[`break_${breakItem.id}`] = "End time must be after start time";
-          isValid = false;
-        } else if (!validateBreakOverlap(breaks, index)) {
-          newErrors[`break_${breakItem.id}`] = "Break times overlap";
-          isValid = false;
-        } else {
-          totalBreakMinutes += duration;
-        }
-      }
-      return { ...breakItem, duration, isValid };
-    });
-
-    setBreaks(updatedBreaks);
-    setTotalBreakTime(totalBreakMinutes);
-
-    if (Object.keys(newErrors).length) {
-      setErrors(newErrors);
-      setIsCalculating(false);
-      return;
-    }
-
-    setErrors({});
-    const loginDate = new Date(`2000-01-01T${loginTime}:00`);
-    const logoutDate = new Date(
-      loginDate.getTime() + (totalWorkingHours * 60 + totalBreakMinutes) * 60000
-    );
-
-    const formattedLogoutTime = logoutDate.toLocaleTimeString("en-US", {
-      hour12: true,
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    const now = new Date();
-    const workedMinutes =
-      Math.max(
-        0,
-        now.getHours() * 60 + now.getMinutes() - (loginDate.getHours() * 60 + loginDate.getMinutes())
-      ) - totalBreakMinutes;
-    const remainingMinutes = Math.max(0, totalWorkingHours * 60 - workedMinutes);
-
-    setRemainingWork(
-      remainingMinutes > 0
-        ? `${Math.floor(remainingMinutes / 60)}h ${remainingMinutes % 60}m`
-        : "Complete!"
-    );
-    setProgress(Math.min(100, (workedMinutes / (totalWorkingHours * 60)) * 100));
-
-    setTimeout(() => {
-      setLogoutTime(formattedLogoutTime);
-      setIsCalculating(false);
-      setShowResult(true);
-      addNotification("Logout time calculated successfully!", "success");
-    }, 1000);
-  }, [loginTime, breaks, totalWorkingHours]);
-
-  const resetCalculator = () => {
-    setLoginTime("");
-    setBreaks([{ id: 1, start: "", end: "", isValid: true, duration: 0 }]);
+  const calculate = async () => {
+    setCalculating(true);
+    setError("");
+    setBreakTime("");
+    setRemainingTime("");
     setLogoutTime("");
-    setShowResult(false);
-    setErrors({});
-    setProgress(0);
-    setTotalBreakTime(0);
-    setRemainingWork("");
-    breakIdCounter.current = 2;
-    addNotification("Calculator reset", "info");
+
+    // Small delay for animation
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    if (!loginTime) {
+      setError("Please enter Login Time.");
+      setCalculating(false);
+      return;
+    }
+
+    const totalWorkMin = toMinutes(twH, twM);
+    const grossMin = toMinutes(grossH, grossM);
+    const effMin = toMinutes(effH, effM);
+
+    if (effMin > grossMin) {
+      setError("Effective time cannot be greater than Gross time.");
+      setCalculating(false);
+      return;
+    }
+
+    const breakMin = Math.max(0, grossMin - effMin);
+    const remainingMin = Math.max(0, totalWorkMin - effMin);
+
+    setBreakTime(fmt(breakMin));
+    setRemainingTime(fmt(remainingMin));
+
+    // Logout = Login + Gross + Remaining
+    const [lh, lm] = loginTime.split(":").map(Number);
+    const loginDate = new Date();
+    loginDate.setHours(lh, lm, 0, 0);
+
+    const logoutDate = new Date(loginDate.getTime() + (grossMin + remainingMin) * 60000);
+    const out = logoutDate.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+    setLogoutTime(out);
+    setCalculating(false);
   };
 
-  const handleBreakChange = (id, field, value) => {
-    setBreaks((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, [field]: value } : b))
-    );
-  };
+const Logo = () => (
+  <div className="flex items-center justify-center space-x-3 mb-8">
+    {/* Logo image */}
+    <div className="relative p-2 rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-500/20 to-cyan-500/20">
+      <img
+        src="/1679347395065-removebg-preview.png" // place the logo inside /public
+        alt="Edvenswa Logo"
+        className="h-10 w-auto"
+      />
+      <div className="absolute inset-0 bg-blue-400 opacity-20 blur-xl rounded-2xl animate-pulse"></div>
+    </div>
 
-  const getTimeInputClass = (hasError) =>
-    `w-full border-2 p-3 rounded-lg text-gray-800 transition-all duration-300 ${
-      hasError
-        ? "border-red-400 bg-red-50 focus:border-red-500"
-        : "border-gray-300 focus:border-blue-500"
-    } focus:outline-none focus:ring-2 focus:ring-blue-200`;
+    {/* Text */}
+    <div>
+      <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 tracking-wide">
+        Edvenswa
+      </h1>
+      <p className="text-xs text-gray-400 tracking-wider uppercase">Work Calculator</p>
+    </div>
+  </div>
+);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-4">
-      {/* Notifications */}
-      <div className="fixed top-4 right-4 z-50 space-y-2">
-        {notifications.map((n) => (
-          <div
-            key={n.id}
-            className={`px-4 py-3 rounded-lg shadow-lg ${
-              n.type === "success"
-                ? "bg-green-500 text-white"
-                : n.type === "error"
-                ? "bg-red-500 text-white"
-                : "bg-blue-500 text-white"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              {n.type === "success" && <CheckCircle className="w-4 h-4" />}
-              {n.type === "error" && <AlertCircle className="w-4 h-4" />}
-              <span className="text-sm font-medium">{n.message}</span>
-            </div>
-          </div>
-        ))}
-      </div>
+    <>
+      <style jsx>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-8px); }
+        }
+        @keyframes glow {
+          0%, 100% { box-shadow: 0 0 30px rgba(59, 130, 246, 0.15); }
+          50% { box-shadow: 0 0 50px rgba(59, 130, 246, 0.3); }
+        }
+        @keyframes slideIn {
+          from { 
+            opacity: 0; 
+            transform: translateY(20px) scale(0.95); 
+          }
+          to { 
+            opacity: 1; 
+            transform: translateY(0) scale(1); 
+          }
+        }
+        .float { animation: float 4s ease-in-out infinite; }
+        .glow { animation: glow 3s ease-in-out infinite; }
+        .slide-in { animation: slideIn 0.6s ease-out; }
+      `}</style>
 
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-3 mb-4">
-            <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full">
-              <Calculator className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Advanced Work Calculator
-            </h1>
-          </div>
-          <p className="text-gray-600 text-lg">
-            Calculate your optimal logout time with precision and style
-          </p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
+        
+        {/* Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-blue-500/5 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-56 h-56 bg-cyan-500/5 rounded-full blur-3xl float"></div>
+          <div className="absolute top-1/2 left-1/2 w-40 h-40 bg-indigo-500/5 rounded-full blur-2xl animate-bounce"></div>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Clock + Summary */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
-              <h3 className="text-lg font-semibold text-black flex items-center gap-2 mb-4">
-                <Clock className="w-5 h-5" /> Live Time
-              </h3>
-              <div className="text-center">
-                <div className="text-4xl font-mono font-bold text-blue-600 mb-2">
-                  {formatTime(currentTime)}
-                </div>
-                <div className="text-gray-500 text-sm">{formatDate(currentTime)}</div>
+        <div className={`relative w-full max-w-lg transition-all duration-1000 ease-out ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+          
+          {/* Main Card */}
+          <div className="bg-gray-900/40 backdrop-blur-2xl border border-gray-700/50 rounded-3xl p-8 shadow-2xl glow">
+            
+            <Logo />
+
+            {/* Live Clock */}
+            <div className="text-center mb-8 p-6 bg-gradient-to-r from-gray-800/30 to-gray-700/30 rounded-2xl border border-gray-600/30 float">
+              <div className="flex items-center justify-center space-x-2 mb-3">
+                <Clock className="w-5 h-5 text-blue-400" />
+                <span className="text-sm text-gray-400 uppercase tracking-wide">Current Time</span>
               </div>
-              <div className="mt-6 grid grid-cols-2 gap-4">
-                <div className="bg-green-50 p-4 rounded-lg text-center">
-                  <div className="text-green-600 text-sm font-medium">Work Progress</div>
-                  <div className="text-2xl font-bold text-green-700">
-                    {Math.round(progress)}%
-                  </div>
-                </div>
-                <div className="bg-orange-50 p-4 rounded-lg text-center">
-                  <div className="text-orange-600 text-sm font-medium">Remaining</div>
-                  <div className="text-lg font-bold text-orange-700">
-                    {remainingWork || "N/A"}
-                  </div>
-                </div>
+              <div className="text-4xl font-mono font-bold text-white mb-2 tracking-wider">
+                {currentTime.toLocaleTimeString("en-US", {
+                  hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true,
+                })}
+              </div>
+              <div className="text-sm text-gray-300">
+                {currentTime.toLocaleDateString("en-US", {
+                  weekday: "long", month: "short", day: "numeric"
+                })}
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-xl p-6">
-              <h3 className="text-lg font-semibold text-black flex items-center gap-2 mb-4">
-                <Timer className="w-5 h-5" /> Today&apos;s Summary
-              </h3>
-              <div className="space-y-4">
-                <div className="flex justify-between text-black">
-                  <span>Working Hours</span>
-                  <span className="font-semibold text-black">{totalWorkingHours}h</span>
-                </div>
-                <div className="flex justify-between text-black">
-                  <span>Total Breaks</span>
-                  <span className="font-semibold text-black">{Math.round(totalBreakTime)}m</span>
-                </div>
-                <div className="flex justify-between text-black">
-                  <span>Break Count</span>
-                  <span className="font-semibold">
-                    {breaks.filter((b) => b.start && b.end).length}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Calculator */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl shadow-xl p-8 space-y-6">
-              {/* Working Hours */}
-              <div className="flex gap-4 items-center text-black">
-                <label className="font-medium">Working Hours:</label>
-                <select
-                  value={totalWorkingHours}
-                  onChange={(e) => setTotalWorkingHours(Number(e.target.value))}
-                  className="border-2 border-gray-300 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                >
-                  {[6, 7, 8, 9, 10].map((h) => (
-                    <option key={h} value={h}>
-                      {h} Hours
-                    </option>
-                  ))}
-                </select>
-              </div>
-
+            {/* Form Fields */}
+            <div className="space-y-6">
+              
               {/* Login Time */}
-              <div>
-                <label className="flex items-center gap-2 font-medium mb-2 text-black">
-                  <Calendar className="w-4 h-4 text-black" /> Login Time
+              <div className="group">
+                <label className="flex items-center space-x-3 text-gray-300 mb-3 group-hover:text-white transition-colors duration-200">
+                  <Clock className="w-4 h-4 text-blue-400" />
+                  <span className="font-medium">Login Time</span>
                 </label>
                 <input
                   type="time"
                   value={loginTime}
                   onChange={(e) => setLoginTime(e.target.value)}
-                  className={getTimeInputClass(errors.loginTime)}
+                  className="w-full bg-gray-800/30 border border-gray-600/50 rounded-2xl px-4 py-4 text-white text-lg font-mono tracking-wider focus:outline-none focus:border-blue-400 focus:bg-gray-800/50 transition-all duration-300 hover:bg-gray-800/40 hover:border-gray-500/70"
                 />
-                {errors.loginTime && (
-                  <div className="flex items-center gap-2 text-red-600 text-sm mt-2">
-                    <AlertCircle className="w-4 h-4" />
-                    {errors.loginTime}
-                  </div>
-                )}
               </div>
 
-              {/* Breaks */}
-              <div>
-                <div className="flex justify-between mb-2 text-black">
-                  <label className="flex items-center gap-2 font-medium text-black">
-                    <Coffee className="w-4 h-4 text-black" /> Break Times
-                  </label>
-                  <button
-                    onClick={handleAddBreak}
-                    className="px-4 py-2 bg-green-600 text-black rounded-lg hover:bg-green-700 flex items-center gap-2"
-                  >
-                    <Plus className="w-4 h-4 text-black" /> Add Break
-                  </button>
-                </div>
-                <div className="space-y-3">
-                  {breaks.map((b, idx) => (
-                    <div
-                      key={b.id}
-                      className={`p-4 rounded-xl border-2 ${
-                        errors[`break_${b.id}`]
-                          ? "border-red-300 bg-red-50"
-                          : "border-gray-200 bg-gray-50"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 mb-3 text-black">
-                        <span>Break {idx + 1}</span>
-                        {b.duration > 0 && (
-                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
-                            {Math.round(b.duration)}m
-                          </span>
-                        )}
-                        {breaks.length > 1 && (
-                          <button
-                            onClick={() => handleRemoveBreak(b.id)}
-                            className="ml-auto text-red-500"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <input
-                          type="time"
-                          value={b.start}
-                          onChange={(e) => handleBreakChange(b.id, "start", e.target.value)}
-                          className={getTimeInputClass(errors[`break_${b.id}`])}
-                        />
-                        <input
-                          type="time"
-                          value={b.end}
-                          onChange={(e) => handleBreakChange(b.id, "end", e.target.value)}
-                          className={getTimeInputClass(errors[`break_${b.id}`])}
-                        />
-                      </div>
-                      {errors[`break_${b.id}`] && (
-                        <div className="flex items-center gap-2 text-red-600 text-sm mt-2">
-                          <AlertCircle className="w-4 h-4" />
-                          {errors[`break_${b.id}`]}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+              {/* Total Work */}
+              <div className="group">
+                <label className="flex items-center space-x-3 text-gray-300 mb-3 group-hover:text-white transition-colors duration-200">
+                  <Timer className="w-4 h-4 text-green-400" />
+                  <span className="font-medium">Total Work Time</span>
+                </label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="relative">
+                    <input 
+                      type="number" 
+                      min="0" 
+                      value={twH} 
+                      onChange={(e) => setTwH(e.target.value)}
+                      className="w-full bg-gray-800/30 border border-gray-600/50 rounded-2xl px-4 py-4 text-white text-center font-mono text-lg focus:outline-none focus:border-green-400 focus:bg-gray-800/50 transition-all duration-300 hover:bg-gray-800/40 hover:border-gray-500/70" 
+                    />
+                    <span className="absolute right-3 top-4 text-gray-400 text-sm">hrs</span>
+                  </div>
+                  <div className="relative">
+                    <input 
+                      type="number" 
+                      min="0" 
+                      max="59" 
+                      value={twM} 
+                      onChange={(e) => setTwM(e.target.value)}
+                      className="w-full bg-gray-800/30 border border-gray-600/50 rounded-2xl px-4 py-4 text-white text-center font-mono text-lg focus:outline-none focus:border-green-400 focus:bg-gray-800/50 transition-all duration-300 hover:bg-gray-800/40 hover:border-gray-500/70" 
+                    />
+                    <span className="absolute right-3 top-4 text-gray-400 text-sm">min</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Buttons */}
-              <div className="flex gap-4 pt-4">
-                <button
-                  onClick={calculateLogout}
-                  disabled={isCalculating}
-                  className="flex-1 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
-                >
-                  {isCalculating ? (
-                    <span>Calculating...</span>
-                  ) : (
-                    <>
-                      <Calculator className="w-5 h-5" /> Calculate Logout Time
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={resetCalculator}
-                  className="px-6 py-3 border-2 border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  Reset
-                </button>
+              {/* Effective Time */}
+              <div className="group">
+                <label className="flex items-center space-x-3 text-gray-300 mb-3 group-hover:text-white transition-colors duration-200">
+                  <CheckCircle className="w-4 h-4 text-yellow-400" />
+                  <span className="font-medium">Effective Time</span>
+                </label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="relative">
+                    <input 
+                      type="number" 
+                      min="0" 
+                      value={effH} 
+                      onChange={(e) => setEffH(e.target.value)}
+                      className="w-full bg-gray-800/30 border border-gray-600/50 rounded-2xl px-4 py-4 text-white text-center font-mono text-lg focus:outline-none focus:border-yellow-400 focus:bg-gray-800/50 transition-all duration-300 hover:bg-gray-800/40 hover:border-gray-500/70" 
+                    />
+                    <span className="absolute right-3 top-4 text-gray-400 text-sm">hrs</span>
+                  </div>
+                  <div className="relative">
+                    <input 
+                      type="number" 
+                      min="0" 
+                      max="59" 
+                      value={effM} 
+                      onChange={(e) => setEffM(e.target.value)}
+                      className="w-full bg-gray-800/30 border border-gray-600/50 rounded-2xl px-4 py-4 text-white text-center font-mono text-lg focus:outline-none focus:border-yellow-400 focus:bg-gray-800/50 transition-all duration-300 hover:bg-gray-800/40 hover:border-gray-500/70" 
+                    />
+                    <span className="absolute right-3 top-4 text-gray-400 text-sm">min</span>
+                  </div>
+                </div>
               </div>
 
-              {/* Results */}
-              {showResult && logoutTime && (
-                <div className="mt-6 p-6 bg-green-50 rounded-xl border-2 border-green-200 text-center">
-                  <div className="flex justify-center items-center gap-2 mb-2">
-                    <CheckCircle className="w-6 h-6 text-green-600" />
-                    <h3 className="font-semibold">Calculation Complete!</h3>
+              {/* Gross Time */}
+              <div className="group">
+                <label className="flex items-center space-x-3 text-gray-300 mb-3 group-hover:text-white transition-colors duration-200">
+                  <BarChart3 className="w-4 h-4 text-purple-400" />
+                  <span className="font-medium">Gross Time</span>
+                </label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="relative">
+                    <input 
+                      type="number" 
+                      min="0" 
+                      value={grossH} 
+                      onChange={(e) => setGrossH(e.target.value)}
+                      className="w-full bg-gray-800/30 border border-gray-600/50 rounded-2xl px-4 py-4 text-white text-center font-mono text-lg focus:outline-none focus:border-purple-400 focus:bg-gray-800/50 transition-all duration-300 hover:bg-gray-800/40 hover:border-gray-500/70" 
+                    />
+                    <span className="absolute right-3 top-4 text-gray-400 text-sm">hrs</span>
                   </div>
-                  <div className="text-3xl font-bold text-green-700 mb-2">{logoutTime}</div>
-                  <div className="text-gray-600 mb-4">Recommended Logout Time</div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div
-                      className="bg-green-500 h-3 rounded-full"
-                      style={{ width: `${progress}%` }}
-                    ></div>
+                  <div className="relative">
+                    <input 
+                      type="number" 
+                      min="0" 
+                      max="59" 
+                      value={grossM} 
+                      onChange={(e) => setGrossM(e.target.value)}
+                      className="w-full bg-gray-800/30 border border-gray-600/50 rounded-2xl px-4 py-4 text-white text-center font-mono text-lg focus:outline-none focus:border-purple-400 focus:bg-gray-800/50 transition-all duration-300 hover:bg-gray-800/40 hover:border-gray-500/70" 
+                    />
+                    <span className="absolute right-3 top-4 text-gray-400 text-sm">min</span>
                   </div>
-                  <div className="mt-2 text-sm text-gray-600">
-                    Work Progress: {Math.round(progress)}% • Remaining: {remainingWork}
-                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Calculate Button */}
+            <button
+              onClick={calculate}
+              disabled={calculating}
+              className="w-full mt-8 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-lg rounded-2xl shadow-2xl transform transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
+            >
+              <span className={`flex items-center justify-center space-x-2 relative z-10 transition-opacity duration-300 ${calculating ? 'opacity-0' : 'opacity-100'}`}>
+                <TrendingUp className="w-5 h-5" />
+                <span>Calculate Work Schedule</span>
+              </span>
+              {calculating && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Loader2 className="w-6 h-6 text-white animate-spin" />
                 </div>
               )}
-            </div>
+              <div className="absolute inset-0 bg-gradient-to-r from-cyan-600 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            </button>
+
+            {/* Error */}
+            {error && (
+              <div className="mt-6 p-4 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-200 slide-in">
+                <div className="flex items-center space-x-3">
+                  <AlertCircle className="w-5 h-5 text-red-400" />
+                  <span>{error}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Results */}
+            {logoutTime && !error && (
+              <div className="mt-6 p-6 bg-gradient-to-r from-green-500/10 to-teal-500/10 border border-green-500/20 rounded-2xl slide-in">
+                <div className="flex items-center justify-center space-x-2 mb-6">
+                  <TrendingUp className="w-5 h-5 text-green-400" />
+                  <h3 className="text-xl font-bold text-white">Work Summary</h3>
+                </div>
+                
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="flex justify-between items-center p-4 bg-gray-800/20 rounded-xl border border-gray-700/30">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-yellow-500/20 rounded-lg">
+                        <Coffee className="w-5 h-5 text-yellow-400" />
+                      </div>
+                      <span className="text-gray-300 font-medium">Break Time</span>
+                    </div>
+                    <span className="text-xl font-mono font-bold text-yellow-400">{breakTime}</span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center p-4 bg-gray-800/20 rounded-xl border border-gray-700/30">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-orange-500/20 rounded-lg">
+                        <Hourglass className="w-5 h-5 text-orange-400" />
+                      </div>
+                      <span className="text-gray-300 font-medium">Remaining</span>
+                    </div>
+                    <span className="text-xl font-mono font-bold text-orange-400">{remainingTime}</span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center p-4 bg-green-500/10 rounded-xl border-2 border-green-500/30">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-green-500/20 rounded-lg">
+                        <LogOut className="w-5 h-5 text-green-400" />
+                      </div>
+                      <span className="text-gray-300 font-medium">Logout Time</span>
+                    </div>
+                    <span className="text-xl font-mono font-bold text-green-400">{logoutTime}</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
